@@ -1,14 +1,11 @@
 package com.windfall.api.payment.service;
 
-import com.windfall.api.auction.service.AuctionStateService;
 import com.windfall.api.payment.dto.request.PaymentConfirmRequest;
 import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.PaymentConfirmResponse;
 import com.windfall.api.payment.dto.response.TossPaymentConfirmResponse;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.repository.AuctionRepository;
-import com.windfall.domain.chat.repository.ChatRoomRepository;
-import com.windfall.domain.payment.repository.PaymentRepository;
 import com.windfall.domain.trade.entity.Trade;
 import com.windfall.domain.trade.enums.TradeStatus;
 import com.windfall.domain.trade.repository.TradeRepository;
@@ -32,12 +29,9 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class PaymentService {
   private final WebClient webClient;
-  private final PaymentRepository paymentRepository;
   private final AuctionRepository auctionRepository;
   private final TradeRepository tradeRepository;
-  private final ChatRoomRepository chatRoomRepository;
   private final UserRepository userRepository;
-  private final AuctionStateService auctionStateService;
   private final PaymentPostProcessService paymentPostProcessService;
 
   @Value("${spring.toss.secretkey}")
@@ -108,20 +102,12 @@ public class PaymentService {
           .finalPrice(amount)
           .build();
       tradeRepository.save(trade); // 신규 엔티티만 save
-    } else {
-      trade.changeBuyer(buyerId);
     }
 
     final Trade tradeFixed = trade;
-
-    // 경우 1. buyer가 본인: 본인이 1빠따. 상태 체크 필요 X
-    // 경우 2. buyer가 남: trade 상태가 CANCELED나 FAILED일 때만 가능.
-    if (!trade.getBuyerId().equals(buyerId)
-        && (trade.getStatus() == TradeStatus.PAYMENT_CANCELED
-        || trade.getStatus() == TradeStatus.PAYMENT_FAILED)) {
-      throw new ErrorException(ErrorCode.PAYMENT_REQUEST_LATE);
-    }
-
+    
+    // toss api proceed해도 되는지 검증
+    validatePaymentRequest(buyerId, trade.getStatus(), trade.getBuyerId());
 
     TossPaymentConfirmRequest tossRequest = new TossPaymentConfirmRequest(paymentKey, orderId,
         amount);
@@ -191,4 +177,25 @@ public class PaymentService {
     return new PaymentConfirmResponse(
         tossResponse.orderId(), tossResponse.paymentKey(), tossResponse.totalAmount());
   }
+
+  // toss api proceed해도 되는지 검증용 함수
+  public void validatePaymentRequest(Long tradeBuyerId, TradeStatus status, Long requestBuyerId) {
+
+    boolean isSameBuyer = tradeBuyerId.equals(requestBuyerId);
+    boolean isRetryable =
+        status == TradeStatus.PAYMENT_CANCELED
+            || status == TradeStatus.PAYMENT_FAILED;
+
+    if (isSameBuyer) {
+      if (status != TradeStatus.PENDING) {
+        throw new ErrorException(ErrorCode.INVALID_TRADE_INIT);
+      }
+    } else {
+      if (!isRetryable) {
+        throw new ErrorException(ErrorCode.PAYMENT_REQUEST_LATE);
+      }
+    }
+  }
+
+
 }
