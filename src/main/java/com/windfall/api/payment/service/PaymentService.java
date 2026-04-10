@@ -108,8 +108,6 @@ public class PaymentService {
           .finalPrice(amount)
           .build();
       tradeRepository.save(trade); // 신규 엔티티만 save
-    } else {
-      trade.changeBuyer(buyerId);
     }
 
     final Trade tradeFixed = trade;
@@ -117,11 +115,10 @@ public class PaymentService {
     // 경우 1. buyer가 본인: 본인이 1빠따. 상태 체크 필요 X
     // 경우 2. buyer가 남: trade 상태가 CANCELED나 FAILED일 때만 가능.
     if (!trade.getBuyerId().equals(buyerId)
-        && (trade.getStatus() == TradeStatus.PAYMENT_CANCELED
-        || trade.getStatus() == TradeStatus.PAYMENT_FAILED)) {
+        && (trade.getStatus() != TradeStatus.PAYMENT_CANCELED
+        && trade.getStatus() != TradeStatus.PAYMENT_FAILED)) {
       throw new ErrorException(ErrorCode.PAYMENT_REQUEST_LATE);
     }
-
 
     TossPaymentConfirmRequest tossRequest = new TossPaymentConfirmRequest(paymentKey, orderId,
         amount);
