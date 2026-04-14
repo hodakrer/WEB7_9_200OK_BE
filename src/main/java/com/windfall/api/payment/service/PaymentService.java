@@ -33,6 +33,7 @@ public class PaymentService {
   private final TradeRepository tradeRepository;
   private final UserRepository userRepository;
   private final PaymentPostProcessService paymentPostProcessService;
+  private final PaymentResponseValidator paymentResponseValidator;
 
   @Value("${spring.toss.secretkey}")
   private String widgetSecretKey;
@@ -161,15 +162,7 @@ public class PaymentService {
         tossResponse.totalAmount()
     );
 
-    if (!tossResponse.orderId().equals(paymentConfirmRequest.orderId())) {
-      trade.changeStatus(TradeStatus.PAYMENT_FAILED);
-      throw new ErrorException(ErrorCode.PAYMENT_ORDER_MISMATCH);
-    }
-
-    if (!tossResponse.totalAmount().equals(paymentConfirmRequest.amount())) {
-      trade.changeStatus(TradeStatus.PAYMENT_FAILED);
-      throw new ErrorException(ErrorCode.PAYMENT_AMOUNT_MISMATCH);
-    }
+    paymentResponseValidator.validate(tossResponse, tossRequest);
 
     // db에 저장하는 로직 따로 뺌.
     paymentPostProcessService.updateDatabaseAfterPayment(auctionId,trade,paymentKey,amount);
