@@ -34,7 +34,7 @@ public class PaymentServiceValidatePaymentRequestTest {
 
   // 1. 본인 + COMPLETED → INVALID_TRADE_INIT
   @Test
-  void validatePaymentRequest_sameBuyer_completed_should_throw_invalid_trade_init() {
+  void throws_invalid_trade_init_when_same_buyer_and_not_pending() {
     ErrorException ex = assertThrows(ErrorException.class, () ->
         service.validatePaymentRequest(1L, TradeStatus.PAYMENT_COMPLETED, 1L)
     );
@@ -44,7 +44,7 @@ public class PaymentServiceValidatePaymentRequestTest {
 
   // 2. 타인 + FAILED → 통과
   @Test
-  void validatePaymentRequest_differentBuyer_failed_should_pass() {
+  void does_not_throw_when_other_buyer_and_status_is_failed() {
     assertDoesNotThrow(() ->
         service.validatePaymentRequest(1L, TradeStatus.PAYMENT_FAILED, 2L)
     );
@@ -52,7 +52,7 @@ public class PaymentServiceValidatePaymentRequestTest {
 
   // 3. 타인 + CANCELED → 통과
   @Test
-  void validatePaymentRequest_differentBuyer_canceled_should_pass() {
+  void does_not_throw_when_other_buyer_and_status_is_canceled() {
     assertDoesNotThrow(() ->
         service.validatePaymentRequest(1L, TradeStatus.PAYMENT_CANCELED, 2L)
     );
@@ -60,7 +60,7 @@ public class PaymentServiceValidatePaymentRequestTest {
 
   // 4. 타인 + PENDING → PAYMENT_REQUEST_LATE
   @Test
-  void validatePaymentRequest_differentBuyer_pending_should_throw_payment_request_late() {
+  void throws_payment_request_late_when_other_buyer_and_status_is_not_retryable_pending() {
     ErrorException ex = assertThrows(ErrorException.class, () ->
         service.validatePaymentRequest(1L, TradeStatus.PENDING, 2L)
     );
@@ -70,7 +70,7 @@ public class PaymentServiceValidatePaymentRequestTest {
 
   // 5. 타인 + COMPLETED → PAYMENT_REQUEST_LATE
   @Test
-  void validatePaymentRequest_differentBuyer_completed_should_throw_payment_request_late() {
+  void throws_payment_request_late_when_other_buyer_and_status_is_not_retryable_completed() {
     ErrorException ex = assertThrows(ErrorException.class, () ->
         service.validatePaymentRequest(1L, TradeStatus.PAYMENT_COMPLETED, 2L)
     );
@@ -80,7 +80,7 @@ public class PaymentServiceValidatePaymentRequestTest {
 
   // 6. 타인 + PURCHASE_CONFIRMED → PAYMENT_REQUEST_LATE
   @Test
-  void validatePaymentRequest_differentBuyer_purchase_confirmed_should_throw_payment_request_late() {
+  void throws_payment_request_late_when_other_buyer_and_status_is_not_retryable_purchase_confirmed() {
     ErrorException ex = assertThrows(ErrorException.class, () ->
         service.validatePaymentRequest(1L, TradeStatus.PURCHASE_CONFIRMED, 2L)
     );
