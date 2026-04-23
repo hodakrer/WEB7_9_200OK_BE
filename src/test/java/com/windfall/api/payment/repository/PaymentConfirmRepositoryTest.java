@@ -10,6 +10,8 @@ import com.windfall.api.auction.dto.request.AuctionCreateRequest;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.enums.AuctionCategory;
 import com.windfall.domain.auction.repository.AuctionRepository;
+import com.windfall.domain.chat.entity.ChatRoom;
+import com.windfall.domain.chat.repository.ChatRoomRepository;
 import com.windfall.domain.payment.entity.Payment;
 import com.windfall.domain.payment.entity.PaymentSelection;
 import com.windfall.domain.payment.enums.PaymentMethod;
@@ -46,6 +48,9 @@ class PaymentConfirmRepositoryTest {
 
   @Autowired
   private PaymentRepository paymentRepository;
+
+  @Autowired
+  private ChatRoomRepository chatRoomRepository;
 
   @Test
   @DisplayName("Auction으로 Trade 조회가 정상 동작한다")
@@ -120,5 +125,44 @@ class PaymentConfirmRepositoryTest {
 
     assertNotNull(saved.getId());
     assertEquals("key", saved.getPaymentKey());
+  }
+
+  @Test
+  void givenTrade_whenGenerateChatRoom_thenSaveChatRoom() {
+
+    User seller = userRepository.save(
+        new User(ProviderType.GOOGLE, "user_id_1",
+            "user_id_1@gmail.com", "nickname_user_id_1",
+            "profile_image_url_user_1")
+    );
+
+    AuctionCreateRequest request = new AuctionCreateRequest(
+        "test auction",
+        "test description",
+        AuctionCategory.CLOTHING,
+        List.of(),              // tags (optional or empty)
+        List.of(1L, 2L),        // imageIds (필수)
+        1000L,                  // startPrice
+        500L,                   // stopLoss
+        100L,                   // dropAmount
+        LocalDateTime.now().plusHours(1) // startAt (미래 시간 권장)
+    );
+    Auction auction = Auction.create(request, seller);
+    auctionRepository.save(auction);
+
+    Trade trade = tradeRepository.save(
+        Trade.builder()
+            .auction(auction)
+            .sellerId(seller.getId())
+            .buyerId(999L)
+            .finalPrice(1000L)
+            .build()
+    );
+
+    ChatRoom chatRoom = ChatRoom.generateChatRoom(trade);
+    chatRoomRepository.save(chatRoom);
+
+    assertNotNull(chatRoom.getId());
+    assertEquals(trade.getId(), chatRoom.getTrade().getId());
   }
 }
