@@ -165,4 +165,30 @@ class PaymentConfirmRepositoryTest {
     assertNotNull(chatRoom.getId());
     assertEquals(trade.getId(), chatRoom.getTrade().getId());
   }
+
+  @Test
+  void givenAuction_whenFindAuctionById_thenReturnAuction() {
+    User seller = userRepository.save(
+        new User(ProviderType.GOOGLE, "user_id_1",
+            "user_id_1@gmail.com", "nickname_user_id_1",
+            "profile_image_url_user_1")
+    );
+    AuctionCreateRequest request = new AuctionCreateRequest(
+        "test auction",
+        "test description",
+        AuctionCategory.CLOTHING,
+        List.of(),              // tags (optional or empty)
+        List.of(1L, 2L),        // imageIds (필수)
+        1000L,                  // startPrice
+        500L,                   // stopLoss
+        100L,                   // dropAmount
+        LocalDateTime.now().plusHours(1) // startAt (미래 시간 권장)
+    );
+    Auction auction = Auction.create(request, seller);
+    auctionRepository.save(auction);
+
+    Auction found = auctionRepository.findById(auction.getId()).get();
+
+    assertEquals(seller.getId(), found.getSeller().getId());
+  }
 }
