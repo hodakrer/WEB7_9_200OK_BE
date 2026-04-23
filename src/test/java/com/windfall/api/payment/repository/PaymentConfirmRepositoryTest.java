@@ -1,6 +1,8 @@
 package com.windfall.api.payment.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.windfall.api.auction.dto.request.AuctionCreateRequest;
 import com.windfall.domain.auction.entity.Auction;
@@ -75,5 +77,27 @@ class PaymentConfirmRepositoryTest {
     assertThat(result).isPresent();
     assertThat(result.get().getId()).isEqualTo(trade.getId());
     assertThat(result.get().getAuction().getId()).isEqualTo(auction.getId());
+  }
+
+  @Test
+  void givenUser_whenExistsByUserId_thenReturnTrue() {
+    User user = userRepository.save(
+        new User(ProviderType.GOOGLE, "user_id_1",
+            "user_id_1@gmail.com", "nickname_user_id_1",
+            "profile_image_url_user_1")
+    );
+
+    assertTrue(userRepository.existsById(user.getId()));
+  }
+
+  @Test
+  void givenUser_whenNotExistsByUserId_thenReturnFalse() {
+    User user = userRepository.save(
+        new User(ProviderType.GOOGLE, "user_id_1",
+            "user_id_1@gmail.com", "nickname_user_id_1",
+            "profile_image_url_user_1")
+    );
+
+    assertFalse(userRepository.existsById(999L));
   }
 }
