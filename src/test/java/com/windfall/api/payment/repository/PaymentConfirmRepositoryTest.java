@@ -1,13 +1,20 @@
 package com.windfall.api.payment.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.windfall.api.auction.dto.request.AuctionCreateRequest;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.enums.AuctionCategory;
 import com.windfall.domain.auction.repository.AuctionRepository;
+import com.windfall.domain.payment.entity.Payment;
+import com.windfall.domain.payment.entity.PaymentSelection;
+import com.windfall.domain.payment.enums.PaymentMethod;
+import com.windfall.domain.payment.enums.PaymentProvider;
+import com.windfall.domain.payment.repository.PaymentRepository;
 import com.windfall.domain.trade.entity.Trade;
 import com.windfall.domain.trade.repository.TradeRepository;
 import com.windfall.domain.user.entity.User;
@@ -36,6 +43,9 @@ class PaymentConfirmRepositoryTest {
 
   @Autowired
   private UserRepository userRepository;
+
+  @Autowired
+  private PaymentRepository paymentRepository;
 
   @Test
   @DisplayName("Auction으로 Trade 조회가 정상 동작한다")
@@ -99,5 +109,16 @@ class PaymentConfirmRepositoryTest {
     );
 
     assertFalse(userRepository.existsById(999L));
+  }
+
+  @Test
+  void givenPayment_whenSaved_thenGenerateIdAndPreservePaymentKey() {
+    Payment payment = Payment.confirm(1L, "key", 1000L,
+        new PaymentSelection(PaymentProvider.TOSS, PaymentMethod.TOSS_PAY));
+
+    Payment saved = paymentRepository.save(payment);
+
+    assertNotNull(saved.getId());
+    assertEquals("key", saved.getPaymentKey());
   }
 }
