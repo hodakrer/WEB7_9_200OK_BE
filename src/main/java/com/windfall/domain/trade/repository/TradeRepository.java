@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TradeRepository extends JpaRepository<Trade, Long> {
   Optional<Trade> findByAuction(Auction auction);
+  long countByAuction(Auction auction);
 }
