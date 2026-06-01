@@ -1,13 +1,4 @@
 package com.windfall.api.payment.integration.trade;
-// 두 트랜잭션이 같은 시점에 Trade 조회 후 생성 시,
-// 먼저 조회한 트랜잭션이 있다면, 아직 커밋/롤백 안했어도 다른 트랜잭션은 생성 시도 금지되어야한다.
-
-// 상황:
-//  Thread A, B가
-//   1) 동시에 시작
-//   2) 동일 auctionId로 createTrade 호출
-//   3) 둘 다 find에서 null을 읽음
-//   4) 둘 다 insert 시도
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,6 +9,8 @@ import com.windfall.api.payment.service.PaymentService;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.enums.AuctionCategory;
 import com.windfall.domain.auction.repository.AuctionRepository;
+import com.windfall.domain.trade.entity.Trade;
+import com.windfall.domain.trade.enums.TradeStatus;
 import com.windfall.domain.trade.repository.TradeRepository;
 import com.windfall.domain.user.entity.User;
 import com.windfall.domain.user.enums.ProviderType;
@@ -34,8 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+
 @SpringBootTest(classes = PaymentServiceTestConfig.class)
-public class TradeCreationUniqueConstraintTest {
+public class AcquiringPermissionFromExistingTradeTest {
 
   @Autowired
   TradeRepository tradeRepository;
@@ -67,9 +61,19 @@ public class TradeCreationUniqueConstraintTest {
     Auction auction = auctionRepository.save(
         Auction.create(request, user));
 
+    Trade trade = Trade.builder()
+        .auction(auction)
+        .buyerId(1L)
+        .sellerId(user.getId())
+        .finalPrice(1000L)
+        .build();
+
+    trade.changeStatus(TradeStatus.PAYMENT_CANCELED);
+    tradeRepository.saveAndFlush(trade);
+
     // when
     Future<?> a = executor.submit(() ->
-        paymentService.acquirePaymentRequestPermission(auction, 1L, 1000L)
+        paymentService.acquirePaymentRequestPermission(auction, 3L, 1000L)
     );
 
     Future<?> b = executor.submit(() ->
