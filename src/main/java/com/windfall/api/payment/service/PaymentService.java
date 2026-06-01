@@ -1,5 +1,7 @@
 package com.windfall.api.payment.service;
 
+import static com.windfall.global.exception.ErrorCode.PAYMENT_REQUEST_LATE;
+
 import com.windfall.api.payment.dto.request.PaymentConfirmRequest;
 import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.PaymentConfirmResponse;
@@ -14,13 +16,16 @@ import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -28,6 +33,7 @@ import reactor.core.publisher.Mono;
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
+
   private final WebClient webClient;
   private final AuctionRepository auctionRepository;
   private final TradeRepository tradeRepository;
@@ -39,133 +45,58 @@ public class PaymentService {
   private String widgetSecretKey;
 
   public PaymentConfirmResponse confirmPayment(
-      PaymentConfirmRequest paymentConfirmRequest,
-      Long buyerId) {
-    log.info("Now on PaymentService");
+      PaymentConfirmRequest paymentConfirmRequest, Long buyerId) {
 
     // DTO에서 데이터 추출하며 예외처리.
     String paymentKey = paymentConfirmRequest.paymentKey();
     String orderId = paymentConfirmRequest.orderId();
     Long amount = paymentConfirmRequest.amount();
     Long auctionId = paymentConfirmRequest.auctionId();
-    Auction auction = auctionRepository.findById(auctionId).orElseThrow(() -> new ErrorException(ErrorCode.NOT_FOUND_AUCTION));
+    Auction auction = auctionRepository.findById(auctionId)
+        .orElseThrow(() -> new ErrorException(ErrorCode.NOT_FOUND_AUCTION));
 
-    log.info(
-        "[PaymentConfirm] request received - paymentKey={}, orderId={}, amount={}, auctionId={}",
-        paymentKey,
-        orderId,
-        amount,
-        auctionId
-    );
-    // 테스트용 임시 User seller 값.
-    /*
-    User seller = new User(
-        ProviderType.KAKAO, "providerUserId", "email", "nickname", "imageUrl");
-    userRepository.save(seller);
-    */
-
-    // 테스트용 임시 Auction auction 값.
-    /*
-    Auction auction = Auction.builder()
-        .seller(seller)
-        .title("auctionTitle")
-        .description("auctionDescription")
-        .category(AuctionCategory.CLOTHING)
-        .startPrice(8888L)
-        .currentPrice(7777L)
-        .stopLoss(6666L)
-        .dropAmount(1111L)
-        .startedAt(LocalDateTime.of(2026, 1, 1, 0, 0))
-        .endedAt(LocalDateTime.of(2026, 12, 31, 23, 59))
-        .build();
-    auctionRepository.save(auction);
-    */
-
+    // 올바른 유저인지 확인과 예외처리.
     Long sellerId = auction.getSeller().getId();
-    if(!userRepository.existsById(sellerId)) throw new ErrorException(ErrorCode.NOT_FOUND_SELLER);
-    if(!userRepository.existsById(buyerId)) throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
-
-    log.info(
-        "[PaymentConfirm] seller/buyer check start - auctionId={}, sellerId={}, buyerId={}",
-        auction.getId(),
-        sellerId,
-        buyerId
-    );
-
-    // 더티체킹 이슈로 상태 분리
-    Trade trade = tradeRepository.findByAuction(auction)
-        .orElse(null);
-    if (trade == null) {
-      trade = Trade.builder()
-          .auction(auction)
-          .sellerId(sellerId)
-          .buyerId(buyerId)
-          .finalPrice(amount)
-          .build();
-      tradeRepository.save(trade); // 신규 엔티티만 save
+    if (!userRepository.existsById(sellerId)) {
+      throw new ErrorException(ErrorCode.NOT_FOUND_SELLER);
+    }
+    if (!userRepository.existsById(buyerId)) {
+      throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
     }
 
+    // 더티체킹 이슈로 상태 분리
+    Trade trade = acquirePaymentRequestPermission(auction, buyerId, amount);
     final Trade tradeFixed = trade;
-    
+
     // toss api proceed해도 되는지 검증
     validatePaymentRequest(buyerId, trade.getStatus(), trade.getBuyerId());
 
-    TossPaymentConfirmRequest tossRequest = new TossPaymentConfirmRequest(paymentKey, orderId,
-        amount);
-
-    log.info(
-        "[TossConfirm] request start - orderId={}, paymentKey={}, amount={}",
-        tossRequest.orderId(),
-        tossRequest.paymentKey(),
-        tossRequest.amount()
-    );
-
+    // Toss PG사에서 요구하는 암호화
     Base64.Encoder encoder = Base64.getEncoder();
     byte[] encodedBytes = encoder.encode((widgetSecretKey + ":").getBytes(StandardCharsets.UTF_8));
     String authorization = "Basic " + new String(encodedBytes);
 
+    // PG사 결제 승인 요청.
+    TossPaymentConfirmRequest tossRequest = new TossPaymentConfirmRequest(paymentKey, orderId,
+        amount);
     TossPaymentConfirmResponse tossResponse = webClient.post()
-        .uri("https://api.tosspayments.com/v1/payments/confirm")
+        .uri("/v1/payments/confirm")
         .header(HttpHeaders.AUTHORIZATION, authorization)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .bodyValue(tossRequest)
         .retrieve()
         .onStatus(HttpStatusCode::isError, response -> {
-          log.warn(
-              "[TossConfirm] error response - httpStatus={}, orderId={}",
-              response.statusCode(),
-              tossRequest.orderId()
-          );
           tradeFixed.changeStatus(TradeStatus.PAYMENT_FAILED);
           return Mono.error(new ErrorException(ErrorCode.PAYMENT_CONFIRM_FAILED));
         })
         .bodyToMono(TossPaymentConfirmResponse.class)
         .block();
 
-    log.info(
-        "[TossConfirm] success response received - orderId={}, status={}, paymentKey={}, totalAmount={}, method={}",
-        tossResponse.orderId(),
-        tossResponse.status(),
-        tossResponse.paymentKey(),
-        tossResponse.totalAmount(),
-        tossResponse.method()
-    );
-
-    /* // 통신 제외한 로직 테스트용 임시 저장 객체
-    TossPaymentConfirmResponse tossResponse = new TossPaymentConfirmResponse(
-        paymentKey, orderId, 9999L, "카드 결제", "DONE");
-    */
-
-    log.info(
-        "[PaymentConfirm] toss response validation start - orderId={}, totalAmount={}",
-        tossResponse.orderId(),
-        tossResponse.totalAmount()
-    );
-
+    // PG사 응답값 올바른지 확인.
     paymentResponseValidator.validate(tossResponse, tossRequest);
 
-    // db에 저장하는 로직 따로 뺌.
-    paymentPostProcessService.updateDatabaseAfterPayment(auctionId,trade,paymentKey,amount);
+    // db에 결과값 저장.
+    paymentPostProcessService.updateDatabaseAfterPayment(auctionId, trade, paymentKey, amount);
 
     return new PaymentConfirmResponse(
         tossResponse.orderId(), tossResponse.paymentKey(), tossResponse.totalAmount());
@@ -185,10 +116,54 @@ public class PaymentService {
       }
     } else {
       if (!isRetryable) {
-        throw new ErrorException(ErrorCode.PAYMENT_REQUEST_LATE);
+        throw new ErrorException(PAYMENT_REQUEST_LATE);
       }
     }
   }
 
+  @Transactional
+  public Trade acquirePaymentRequestPermission(Auction auction, Long buyerId, Long amount) {
 
+    Trade existingTrade =
+        tradeRepository.findByAuction(auction)
+            .orElse(null);
+
+    // 최초로 trade 생성/UNIQUE로 trade 다수 생성 예방.
+    if (existingTrade == null) {
+
+      Trade newTrade = Trade.builder()
+          .auction(auction)
+          .buyerId(buyerId)
+          .sellerId(auction.getSeller().getId())
+          .finalPrice(amount)
+          .status(TradeStatus.PROCESSING)
+          .build();
+
+      try {
+
+        return tradeRepository.save(newTrade);
+
+      } catch (DataIntegrityViolationException e) {
+
+        throw new ErrorException(PAYMENT_REQUEST_LATE);
+      }
+    }
+
+    // 기존 trade가 결제 가능 상태라면, 결제 요청을 선점 시도(PROCESSING으로 상태 변경)
+    int updated = tradeRepository.reservePaymentProcessing(
+        auction,
+        TradeStatus.PROCESSING,
+        List.of(
+            TradeStatus.PAYMENT_FAILED,
+            TradeStatus.PAYMENT_CANCELED
+        )
+    );
+
+    if (updated == 0) {
+      throw new ErrorException(PAYMENT_REQUEST_LATE);
+    }
+
+    return tradeRepository.findByAuction(auction)
+        .orElseThrow();
+  }
 }

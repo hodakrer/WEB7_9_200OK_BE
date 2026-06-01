@@ -38,51 +38,16 @@ public class PaymentPostProcessService {
     // trade 객체, payment 객체 값과 status 변경, 저장.
     // payment 객체 생성, 값 넣고 저장.
     // 채팅방 객체도 생성, 저장.
-    log.info(
-        "[PaymentConfirm] auction completion start - auctionId={}",
-        auctionId
-    );
-    auctionStateService.completeAuction(auctionId);
-    log.info(
-        "[PaymentConfirm] auction completed - auctionId={}",
-        auctionId
-    );
 
-    log.info(
-        "[PaymentConfirm] trade status change - tradeId={}, from={}, to={}",
-        trade.getId(),
-        trade.getStatus(),
-        TradeStatus.PAYMENT_COMPLETED
-    );
+    auctionStateService.completeAuction(auctionId);
+
     trade.changeStatus(TradeStatus.PAYMENT_COMPLETED);
 
-    log.info(
-        "[PaymentConfirm] payment entity create - tradeId={}, paymentKey={}, amount={}, provider={}, method={}",
-        trade.getId(),
-        paymentKey,
-        amount,
-        PaymentProvider.TOSS,
-        PaymentMethod.MOBILE_PAYMENT
-    );
     Payment payment = Payment.confirm(trade.getId(), paymentKey, amount,
         new PaymentSelection(PaymentProvider.TOSS, PaymentMethod.MOBILE_PAYMENT));
     paymentRepository.save(payment);
-    log.info(
-        "[PaymentConfirm] payment saved - paymentId={}, tradeId={}",
-        payment.getId(),
-        trade.getId()
-    );
 
-    log.info(
-        "[PaymentConfirm] chat room create - tradeId={}",
-        trade.getId()
-    );
     ChatRoom chatRoom = ChatRoom.generateChatRoom(trade);
     chatRoomRepository.save(chatRoom);
-    log.info(
-        "[PaymentConfirm] chat room saved - chatRoomId={}, tradeId={}",
-        chatRoom.getId(),
-        trade.getId()
-    );
   }
 }
