@@ -64,9 +64,7 @@ public class PaymentService {
       throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
     }
 
-    // 더티체킹 이슈로 상태 분리
     Trade trade = acquirePaymentRequestPermission(auction, buyerId, amount);
-    final Trade tradeFixed = trade;
 
     // toss api proceed해도 되는지 검증
     validatePaymentRequest(buyerId, trade.getStatus(), trade.getBuyerId());
@@ -86,7 +84,7 @@ public class PaymentService {
         .bodyValue(tossRequest)
         .retrieve()
         .onStatus(HttpStatusCode::isError, response -> {
-          tradeFixed.changeStatus(TradeStatus.PAYMENT_FAILED);
+          trade.changeStatus(TradeStatus.PAYMENT_FAILED);
           return Mono.error(new ErrorException(ErrorCode.PAYMENT_CONFIRM_FAILED));
         })
         .bodyToMono(TossPaymentConfirmResponse.class)
