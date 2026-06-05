@@ -134,7 +134,7 @@ public class PaymentService {
           .buyerId(buyerId)
           .sellerId(auction.getSeller().getId())
           .finalPrice(amount)
-          .status(TradeStatus.PROCESSING)
+          .status(TradeStatus.PENDING)
           .build();
 
       try {
