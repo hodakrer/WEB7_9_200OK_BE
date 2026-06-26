@@ -55,6 +55,10 @@ dependencies {
     // 외부 연동
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 
+    // retry용
+    implementation("org.springframework.retry:spring-retry")
+    implementation("org.springframework.boot:spring-boot-starter-aop")
+
     // actuator
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
@@ -65,6 +69,16 @@ dependencies {
 
     // Elasticsearch
     //implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
+
+    // Prometheus
+    // 선행 1: "org.springframework.boot:spring-boot-starter-actuator"
+    // 선행 2: "org.springframework.boot:spring-boot-starter-websocket"
+    implementation("io.micrometer:micrometer-registry-prometheus")
+
+    // Payment Integration Test
+    implementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
 }
 
 tasks.withType<Test> {
