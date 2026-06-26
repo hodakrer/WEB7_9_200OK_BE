@@ -9,7 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class WebClientConfig {
 
-  @Value("${toss.base-url}")
+  @Value("${spring.toss.base-url}")
   private String baseUrl;
 
   @Bean

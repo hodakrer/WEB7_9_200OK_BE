@@ -6,6 +6,8 @@ import com.windfall.api.payment.dto.request.PaymentConfirmRequest;
 import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.PaymentConfirmResponse;
 import com.windfall.api.payment.dto.response.TossPaymentConfirmResponse;
+import com.windfall.api.payment.service.retry.backoff.BackoffStrategy;
+import com.windfall.api.payment.service.retry.backoff.ExponentialFullJitterBackoffStrategy;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.repository.AuctionRepository;
 import com.windfall.domain.trade.entity.Trade;
@@ -75,20 +77,14 @@ public class PaymentService {
     String authorization = "Basic " + new String(encodedBytes);
 
     // PG사 결제 승인 요청.
+    BackoffStrategy exponentialFullJitterBackoffStrategy
+        = new ExponentialFullJitterBackoffStrategy(100,2.0,3000);
+
     TossPaymentConfirmRequest tossRequest = new TossPaymentConfirmRequest(paymentKey, orderId,
         amount);
-    TossPaymentConfirmResponse tossResponse = webClient.post()
-        .uri("/v1/payments/confirm")
-        .header(HttpHeaders.AUTHORIZATION, authorization)
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .bodyValue(tossRequest)
-        .retrieve()
-        .onStatus(HttpStatusCode::isError, response -> {
-          trade.changeStatus(TradeStatus.PAYMENT_FAILED);
-          return Mono.error(new ErrorException(ErrorCode.PAYMENT_CONFIRM_FAILED));
-        })
-        .bodyToMono(TossPaymentConfirmResponse.class)
-        .block();
+
+    TossPaymentConfirmResponse tossResponse
+        = confirm(authorization, tossRequest, trade, exponentialFullJitterBackoffStrategy);
 
     // PG사 응답값 올바른지 확인.
     paymentResponseValidator.validate(tossResponse, tossRequest);
@@ -163,5 +159,56 @@ public class PaymentService {
 
     return tradeRepository.findByAuction(auction)
         .orElseThrow();
+  }
+
+
+  TossPaymentConfirmResponse confirm(
+      String authorization,
+      TossPaymentConfirmRequest tossRequest,
+      Trade trade,
+      BackoffStrategy backoffStrategy){
+
+    int maxAttempts = 5;
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+
+      try {
+
+        TossPaymentConfirmResponse tossResponse = webClient.post()
+            .uri("/v1/payments/confirm")
+            .header(HttpHeaders.AUTHORIZATION, authorization)
+            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .bodyValue(tossRequest)
+            .retrieve()
+            .onStatus(HttpStatusCode::isError, response ->
+                Mono.error(new ErrorException(ErrorCode.PAYMENT_CONFIRM_FAILED))
+            )
+            .bodyToMono(TossPaymentConfirmResponse.class)
+            .block();
+
+        // 성공
+        return tossResponse;
+
+      } catch (ErrorException e) {
+
+        // 마지막 시도라면 최종 실패
+        if (attempt == maxAttempts) {
+          trade.changeStatus(TradeStatus.PAYMENT_FAILED);
+          throw e;
+        }
+
+        // Full Jitter 대기
+        long delay = backoffStrategy.nextDelay(attempt);
+
+        try {
+          Thread.sleep(delay);
+        } catch (InterruptedException ex) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException(ex);
+        }
+      }
+    }
+
+    throw new IllegalStateException("Retry loop terminated unexpectedly.");
   }
 }
