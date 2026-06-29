@@ -1,6 +1,6 @@
 name: 백엔드 CI 테스트 자동화
 
-on: #
+on:
   pull_request:
     branches:
       - main
