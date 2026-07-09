@@ -4,7 +4,9 @@ import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.TossPaymentConfirmResponse;
 import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
+import org.springframework.stereotype.Component;
 
+@Component
 public class PaymentResponseValidator {
 
   public void validate(TossPaymentConfirmResponse response,
