@@ -31,6 +31,14 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
       FilterChain filterChain) throws ServletException, IOException {
 
+    // 프로메테우스용 actuator 통과
+    /*
+    String path = request.getRequestURI();
+    if (path.startsWith("/actuator")) {
+      filterChain.doFilter(request, response);
+      return;
+    }*/
+
     // preflight 통과
     if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
       filterChain.doFilter(request, response);
@@ -44,8 +52,6 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
       return;
     }
-
-
 
     String providerUserId = jwtProvider.getProviderUserId(token);
     User user = userService.getUserByProviderUserId(providerUserId);
@@ -63,7 +69,6 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
         new WebAuthenticationDetailsSource().buildDetails(request)
     );
 
-
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
     Authentication authInfo = SecurityContextHolder.getContext().getAuthentication();
@@ -76,7 +81,6 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
       log.info("SecurityContext에 인증 정보가 없음 또는 Principal이 CustomUserDetails가 아님");
     }
 
-
     filterChain.doFilter(request, response);
   }
 
@@ -87,7 +91,9 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
     }
 
     Cookie[] cookies = request.getCookies();
-    if (cookies == null) return null;
+    if (cookies == null) {
+      return null;
+    }
 
     for (Cookie c : cookies) {
       if ("accessToken".equals(c.getName())) {

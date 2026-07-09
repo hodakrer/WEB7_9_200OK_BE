@@ -25,7 +25,7 @@ spring:
         highlight_sql: true
         use_sql_comments: true
     hibernate:
-      ddl-auto: update
+      ddl-auto: create
     show-sql: true
 
   kakao:
@@ -51,9 +51,12 @@ spring:
 
   toss:
     secretkey: ${SECRETKEY_TOSS}
+    base-url: ${BASE_URL_TOSS}
 
 logging:
   level:
+    org.springframework.boot.actuate.endpoint.web: DEBUG
+    org.springframework.web.servlet: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
     org.hibernate.orm.jdbc.extract: TRACE
     org.springframework.transaction.interceptor: TRACE
@@ -71,8 +74,8 @@ springdoc:
 
 custom:
   jwt:
-    expireSecondsAccessToken: 3600 # 1시간
-    expireSecondsRefreshToken: 604800 # 7일
+    expireSecondsAccessToken: 31536000 # 테스트용 -> 실제론 1시간
+    expireSecondsRefreshToken: 31536000 # 테스트용 -> 실제론 7일
     secretPattern: ${SECRET_PATTERN}
 
   cors:
@@ -80,8 +83,8 @@ custom:
 
 app:
   seed:
-    enabled: false   # 기본은 false
-    reset: false     # true면 전체 삭제 후 재삽입
+    enabled: true   # 기본은 false
+    reset: true     # true면 전체 삭제 후 재삽입
     marker-email: seed_admin@windfall.local
 
 aws:
@@ -95,13 +98,20 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: "*"
+      base-path: /actuator
   endpoint:
     health:
       show-details: always
+    prometheus:
+      enabled: true
   health:
     redis:
       enabled: false # 헬스체크 최소화
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
 resilience4j:
   retry:
