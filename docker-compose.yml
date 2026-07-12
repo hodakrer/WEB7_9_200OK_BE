@@ -10,7 +10,7 @@ services:
     expose:
       - "6379"
     networks:
-      - windfall-net
+      - web7_9_200ok_be_default
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -31,7 +31,7 @@ services:
     expose:
       - "3306"
     networks:
-      - windfall-net
+      - web7_9_200ok_be_default
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
@@ -56,7 +56,7 @@ services:
     expose:
       - "8080"
     networks:
-      - windfall-net
+      - web7_9_200ok_be_default
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/actuator/health"]
@@ -82,7 +82,7 @@ services:
     expose:
       - "8080"
     networks:
-      - windfall-net
+      - web7_9_200ok_be_default
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/actuator/health"]
@@ -102,12 +102,12 @@ services:
       - ./certs:/etc/nginx/certs:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     networks:
-      - windfall-net
+      - web7_9_200ok_be_default
     restart: unless-stopped
 
 networks:
-  windfall-net:
-    driver: bridge
+  web7_9_200ok_be_default:
+    external: true
 
 volumes:
   mysql-data:
