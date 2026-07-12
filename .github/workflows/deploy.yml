@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 코드 가져오기
+      # 1.  코드 가져오기
       - name: Checkout source code
         uses: actions/checkout@v3
 
