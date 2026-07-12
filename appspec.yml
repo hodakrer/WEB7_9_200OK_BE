@@ -6,13 +6,13 @@ os: linux
 # EC2의 지정된 경로(destination)로 복사합니다.
 files:
   - source: /
-    destination: /home/ubuntu/windfall-app
+    destination: /home/ubuntu/WEB7_9_200OK_BE
     overwrite: yes
 
 # 2. 권한 설정
 # deploy.sh 스크립트를 실행할 수 있도록 권한(755)을 부여
 permissions:
-  - object: /home/ubuntu/windfall-app/scripts/deploy.sh
+  - object: /home/ubuntu/WEB7_9_200OK_BE/scripts/deploy.sh
     owner: ubuntu
     group: ubuntu
     mode: 755
