@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#  1. 작업 디렉토리 이동 (appspec.yml에서 지정한 destination과 일치)
+# 1. 작업 디렉토리 이동 (appspec.yml에서 지정한 destination과 일치)
 cd /home/ubuntu/WEB7_9_200OK_BE
 
 # 2. 환경변수 로드 (.env 파일이 있으면 적용)
