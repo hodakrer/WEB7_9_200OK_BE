@@ -9,8 +9,8 @@ if [ -f .env ]; then
 fi
 
 # 3. 현재 실행 중인 서비스 확인 (Blue인지 Green인지)
-# docker-compose ps 명령어로 'wind-fall-green' 서비스가 'Up' 상태인지 확인
-IS_GREEN=$(docker-compose ps | grep wind-fall-green | grep Up)
+# docker compose ps 명령어로 'wind-fall-green' 서비스가 'Up' 상태인지 확인
+IS_GREEN=$(docker compose ps | grep wind-fall-green | grep Up)
 
 # 4. 배포 대상(Target) 및 중단 대상(Stop) 설정
 if [ -z "$IS_GREEN" ]; then
@@ -26,19 +26,19 @@ fi
 echo "Target Service: $TARGET_SERVICE"
 
 # 5. 이미지 가져오기 (Redis, MySQL, Nginx 등 최신 이미지도 같이 확인)
-docker-compose pull
+docker compose pull
 
 # 6. 새 서비스 실행
 # --no-deps: 연결된 다른 컨테이너(Redis, MySQL 등)를 재시작하지 않음
 echo "$TARGET_SERVICE 컨테이너를 실행합니다..."
-docker-compose up -d --no-deps $TARGET_SERVICE
+docker compose up -d --no-deps $TARGET_SERVICE
 
 # 7. Health Check (Docker Native 방식)
 echo "Health Check 시작..."
 
 for i in {1..20}; do
   # docker inspect로 컨테이너의 상태(healthy, starting, unhealthy) 확인
-  # docker-compose.yml에 healthcheck 설정이 되어 있어야 함
+  # docker compose.yml에 healthcheck 설정이 되어 있어야 함
   HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' $TARGET_SERVICE)
 
   echo "   Checking... ($i/20) - Status: $HEALTH_STATUS"
@@ -50,7 +50,7 @@ for i in {1..20}; do
 
   if [ $i -eq 20 ]; then
     echo "Health Check 실패. 배포를 중단하고 롤백합니다."
-    docker-compose stop $TARGET_SERVICE
+    docker compose stop $TARGET_SERVICE
     exit 1
   fi
 
@@ -65,25 +65,25 @@ echo "set \$service_url http://$TARGET_SERVICE:8080;" | sudo tee ./nginx/conf.d/
 
 # (2) 파일이 제대로 바뀌었는지 로그로 확인
 echo "Checking service-url.inc content:"
-docker-compose exec -T nginx cat /etc/nginx/conf.d/service-url.inc
+docker compose exec -T nginx cat /etc/nginx/conf.d/service-url.inc
 
 # (3) Nginx 설정 문법 검사 (설정 파일 오류 시 리로드 방지)
 echo "Nginx 설정 문법 검사 중..."
-if ! docker-compose exec -T nginx nginx -t; then
+if ! docker compose exec -T nginx nginx -t; then
     echo "Nginx 설정 문법 오류! 배포를 중단합니다."
-    docker-compose stop $TARGET_SERVICE
+    docker compose stop $TARGET_SERVICE
     exit 1
 fi
 
 # (4) Nginx 재시작
 echo "Nginx Restarting..."
-docker-compose restart nginx
+docker compose restart nginx
 sleep 3
 echo "스위칭 완료!"
 
 # 9. 구버전 서비스 중단
 echo "이전 버전($STOP_SERVICE)을 중단합니다..."
-docker-compose stop $STOP_SERVICE
+docker compose stop $STOP_SERVICE
 
 echo "미사용 이미지를 정리합니다..."
 docker image prune -f
