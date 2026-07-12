@@ -17,6 +17,7 @@ services:
       interval: 10s
       timeout: 3s
       retries: 10
+    mem_limit: 256m
 
   mysql:
     image: mysql:8.0
@@ -38,6 +39,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 15
+    mem_limit: 2g
 
   wind-fall-blue:
     image: ${DOCKER_USERNAME}/windfall:${APP_IMAGE_TAG:-latest}
@@ -50,9 +52,11 @@ services:
     env_file:
       - .env
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx1024m"
       SPRING_PROFILES_ACTIVE: blue
       SERVER_PORT: 8080
       REDIS_HOST: redis
+    mem_limit: 1536m
     expose:
       - "8080"
     networks:
@@ -76,9 +80,11 @@ services:
     env_file:
       - .env
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx1024m"
       SPRING_PROFILES_ACTIVE: green
       SERVER_PORT: 8080
       REDIS_HOST: redis
+    mem_limit: 1536m
     expose:
       - "8080"
     networks:
@@ -104,6 +110,7 @@ services:
     networks:
       - web7_9_200ok_be_default
     restart: unless-stopped
+    mem_limit: 128m
 
 networks:
   web7_9_200ok_be_default:
