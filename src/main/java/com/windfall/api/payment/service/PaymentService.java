@@ -6,6 +6,7 @@ import com.windfall.api.payment.dto.request.PaymentConfirmRequest;
 import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.PaymentConfirmResponse;
 import com.windfall.api.payment.dto.response.TossPaymentConfirmResponse;
+import com.windfall.api.payment.service.retry.PaymentPreProcessService;
 import com.windfall.api.payment.service.retry.backoff.BackoffStrategy;
 import com.windfall.api.payment.service.retry.backoff.ExponentialFullJitterBackoffStrategy;
 import com.windfall.domain.auction.entity.Auction;
@@ -40,6 +41,7 @@ public class PaymentService {
   private final AuctionRepository auctionRepository;
   private final TradeRepository tradeRepository;
   private final UserRepository userRepository;
+  private final PaymentPreProcessService paymentPreProcessService;
   private final PaymentPostProcessService paymentPostProcessService;
   private final PaymentResponseValidator paymentResponseValidator;
 
@@ -66,10 +68,10 @@ public class PaymentService {
       throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
     }
 
-    Trade trade = acquirePaymentRequestPermission(auction, buyerId, amount);
+    Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount);
 
     // toss api proceed해도 되는지 검증
-    validatePaymentRequest(buyerId, trade.getStatus(), trade.getBuyerId());
+    paymentPreProcessService.validatePaymentRequest(buyerId, trade.getStatus(), trade.getBuyerId());
 
     // Toss PG사에서 요구하는 암호화
     Base64.Encoder encoder = Base64.getEncoder();
