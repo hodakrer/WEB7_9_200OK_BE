@@ -70,9 +70,6 @@ public class PaymentService {
 
     Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount);
 
-    // toss api proceed해도 되는지 검증
-    paymentPreProcessService.validatePaymentRequest(buyerId, trade.getStatus(), trade.getBuyerId());
-
     // Toss PG사에서 요구하는 암호화
     Base64.Encoder encoder = Base64.getEncoder();
     byte[] encodedBytes = encoder.encode((widgetSecretKey + ":").getBytes(StandardCharsets.UTF_8));

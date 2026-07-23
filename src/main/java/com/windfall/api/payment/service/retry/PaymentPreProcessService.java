@@ -6,7 +6,6 @@ import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.trade.entity.Trade;
 import com.windfall.domain.trade.enums.TradeStatus;
 import com.windfall.domain.trade.repository.TradeRepository;
-import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -19,25 +18,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentPreProcessService {
 
   private final TradeRepository tradeRepository;
-
-  // toss api proceed해도 되는지 검증용 함수
-  public void validatePaymentRequest(Long tradeBuyerId, TradeStatus status, Long requestBuyerId) {
-
-    boolean isSameBuyer = tradeBuyerId.equals(requestBuyerId);
-    boolean isRetryable =
-        status == TradeStatus.PAYMENT_CANCELED
-            || status == TradeStatus.PAYMENT_FAILED;
-
-    if (isSameBuyer) {
-      if (status != TradeStatus.PENDING) {
-        throw new ErrorException(ErrorCode.INVALID_TRADE_INIT);
-      }
-    } else {
-      if (!isRetryable) {
-        throw new ErrorException(PAYMENT_REQUEST_LATE);
-      }
-    }
-  }
 
   @Transactional
   public Trade acquirePaymentRequestPermission(Auction auction, Long buyerId, Long amount) {
