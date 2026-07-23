@@ -26,4 +26,8 @@ public interface TradeRepository extends JpaRepository<Trade, Long> {
       @Param("processingStatus") TradeStatus processingStatus,
       @Param("retryableStatuses") List<TradeStatus> retryableStatuses
   );
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("UPDATE Trade t SET t.status = :status WHERE t.id = :id")
+  int updateStatus(@Param("id") Long id, @Param("status") TradeStatus status);
 }

@@ -19,16 +19,13 @@ import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -114,53 +111,6 @@ public class PaymentService {
     }
   }
 
-  @Transactional
-  public Trade acquirePaymentRequestPermission(Auction auction, Long buyerId, Long amount) {
-
-    Trade existingTrade =
-        tradeRepository.findByAuction(auction)
-            .orElse(null);
-
-    // 최초로 trade 생성/UNIQUE로 trade 다수 생성 예방.
-    if (existingTrade == null) {
-
-      Trade newTrade = Trade.builder()
-          .auction(auction)
-          .buyerId(buyerId)
-          .sellerId(auction.getSeller().getId())
-          .finalPrice(amount)
-          .status(TradeStatus.PENDING)
-          .build();
-
-      try {
-
-        return tradeRepository.save(newTrade);
-
-      } catch (DataIntegrityViolationException e) {
-
-        throw new ErrorException(PAYMENT_REQUEST_LATE);
-      }
-    }
-
-    // 기존 trade가 결제 가능 상태라면, 결제 요청을 선점 시도(PROCESSING으로 상태 변경)
-    int updated = tradeRepository.reservePaymentProcessing(
-        auction,
-        TradeStatus.PROCESSING,
-        List.of(
-            TradeStatus.PAYMENT_FAILED,
-            TradeStatus.PAYMENT_CANCELED
-        )
-    );
-
-    if (updated == 0) {
-      throw new ErrorException(PAYMENT_REQUEST_LATE);
-    }
-
-    return tradeRepository.findByAuction(auction)
-        .orElseThrow();
-  }
-
-
   TossPaymentConfirmResponse confirm(
       String authorization,
       TossPaymentConfirmRequest tossRequest,
@@ -192,7 +142,7 @@ public class PaymentService {
 
         // 마지막 시도라면 최종 실패
         if (attempt == maxAttempts) {
-          trade.changeStatus(TradeStatus.PAYMENT_FAILED);
+          tradeRepository.updateStatus(trade.getId(), TradeStatus.PAYMENT_FAILED);
           throw e;
         }
 

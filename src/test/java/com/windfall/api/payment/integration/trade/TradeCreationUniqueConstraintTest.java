@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.windfall.api.auction.dto.request.AuctionCreateRequest;
 import com.windfall.api.auction.dto.request.TagInfo;
 import com.windfall.api.payment.service.PaymentService;
+import com.windfall.api.payment.service.retry.PaymentPreProcessService;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.enums.AuctionCategory;
 import com.windfall.domain.auction.repository.AuctionRepository;
@@ -45,6 +46,8 @@ public class TradeCreationUniqueConstraintTest {
   UserRepository userRepository;
   @Autowired
   PaymentService paymentService;
+  @Autowired
+  PaymentPreProcessService paymentPreProcessService;
 
   private ExecutorService executor = Executors.newFixedThreadPool(2);
 
@@ -69,11 +72,11 @@ public class TradeCreationUniqueConstraintTest {
 
     // when
     Future<?> a = executor.submit(() ->
-        paymentService.acquirePaymentRequestPermission(auction, 1L, 1000L)
+        paymentPreProcessService.acquirePaymentRequestPermission(auction, 1L, 1000L)
     );
 
     Future<?> b = executor.submit(() ->
-        paymentService.acquirePaymentRequestPermission(auction, 2L, 2000L)
+        paymentPreProcessService.acquirePaymentRequestPermission(auction, 2L, 2000L)
     );
 
     Exception exA = null;
