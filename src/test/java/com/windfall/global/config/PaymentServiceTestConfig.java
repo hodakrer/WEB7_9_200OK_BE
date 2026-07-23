@@ -3,6 +3,7 @@ package com.windfall.global.config;
 import com.windfall.api.payment.service.PaymentPostProcessService;
 import com.windfall.api.payment.service.PaymentResponseValidator;
 import com.windfall.api.payment.service.PaymentService;
+import com.windfall.api.payment.service.retry.PaymentPreProcessService;
 import com.windfall.domain.auction.repository.AuctionRepository;
 import com.windfall.domain.trade.repository.TradeRepository;
 import com.windfall.domain.user.repository.UserRepository;
@@ -22,6 +23,7 @@ public class PaymentServiceTestConfig {
       AuctionRepository auctionRepository,
       TradeRepository tradeRepository,
       UserRepository userRepository,
+      PaymentPreProcessService paymentPreProcessService,
       PaymentPostProcessService paymentPostProcessService,
       PaymentResponseValidator paymentResponseValidator
   ) {
@@ -30,6 +32,7 @@ public class PaymentServiceTestConfig {
         auctionRepository,
         tradeRepository,
         userRepository,
+        paymentPreProcessService,
         paymentPostProcessService,
         paymentResponseValidator
     );
