@@ -66,6 +66,13 @@ public class PaymentService {
     }
 
     Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount);
+    // 테스트용
+    log.info(
+        "Payment request claim success. auctionId={}, buyerId={}, tradeId={}",
+        auctionId,
+        buyerId,
+        trade.getId()
+    );
 
     // Toss PG사에서 요구하는 암호화
     Base64.Encoder encoder = Base64.getEncoder();
@@ -79,8 +86,27 @@ public class PaymentService {
     TossPaymentConfirmRequest tossRequest = new TossPaymentConfirmRequest(paymentKey, orderId,
         amount);
 
+    log.info("[TEST] First confirm request");
     TossPaymentConfirmResponse tossResponse
-        = confirm(authorization, tossRequest, trade, exponentialFullJitterBackoffStrategy);
+        = confirm(authorization, tossRequest, trade,
+        exponentialFullJitterBackoffStrategy, paymentKey);
+    log.info(
+        "[TEST] First response paymentKey={}, orderId={}, totalAmount={}",
+        tossResponse.paymentKey(),
+        tossResponse.orderId(),
+        tossResponse.totalAmount()
+    );
+
+    log.info("[TEST] Second confirm request");
+    TossPaymentConfirmResponse secondResponse
+        = confirm(authorization, tossRequest, trade,
+        exponentialFullJitterBackoffStrategy, paymentKey);
+    log.info(
+        "[TEST] Second response paymentKey={}, orderId={}, totalAmount={}",
+        secondResponse.paymentKey(),
+        secondResponse.orderId(),
+        secondResponse.totalAmount()
+    );
 
     // PG사 응답값 올바른지 확인.
     paymentResponseValidator.validate(tossResponse, tossRequest);
@@ -115,7 +141,8 @@ public class PaymentService {
       String authorization,
       TossPaymentConfirmRequest tossRequest,
       Trade trade,
-      BackoffStrategy backoffStrategy){
+      BackoffStrategy backoffStrategy,
+      String idempotencyKey){
 
     int maxAttempts = 5;
 
@@ -127,6 +154,7 @@ public class PaymentService {
             .uri("/v1/payments/confirm")
             .header(HttpHeaders.AUTHORIZATION, authorization)
             .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .header("Idempotency-Key", idempotencyKey)
             .bodyValue(tossRequest)
             .retrieve()
             .onStatus(HttpStatusCode::isError, response ->
