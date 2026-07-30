@@ -44,7 +44,7 @@ public class Trade extends BaseEntity {
   @Builder.Default
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
-  private TradeStatus status = TradeStatus.PENDING;
+  private TradeStatus status = TradeStatus.PROCESSING;
 
   @Column(name = "final_price", nullable = false)
   private Long finalPrice;

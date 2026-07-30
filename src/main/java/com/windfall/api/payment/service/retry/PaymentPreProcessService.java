@@ -9,10 +9,12 @@ import com.windfall.domain.trade.repository.TradeRepository;
 import com.windfall.global.exception.ErrorException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentPreProcessService {
@@ -34,7 +36,7 @@ public class PaymentPreProcessService {
           .buyerId(buyerId)
           .sellerId(auction.getSeller().getId())
           .finalPrice(amount)
-          .status(TradeStatus.PENDING)
+          .status(TradeStatus.PROCESSING)
           .build();
 
       try {
@@ -42,7 +44,7 @@ public class PaymentPreProcessService {
         return tradeRepository.save(newTrade);
 
       } catch (DataIntegrityViolationException e) {
-
+        log.warn("[RACE] UNIQUE constraint blocked duplicate trade. auctionId={}", auction.getId());
         throw new ErrorException(PAYMENT_REQUEST_LATE);
       }
     }
@@ -58,6 +60,7 @@ public class PaymentPreProcessService {
     );
 
     if (updated == 0) {
+      log.warn("[RACE] Conditional UPDATE blocked re-entry. auctionId={}", auction.getId());
       throw new ErrorException(PAYMENT_REQUEST_LATE);
     }
 

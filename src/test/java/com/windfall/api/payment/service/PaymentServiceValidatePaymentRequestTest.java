@@ -58,11 +58,11 @@ public class PaymentServiceValidatePaymentRequestTest {
     );
   }
 
-  // 4. 타인 + PENDING → PAYMENT_REQUEST_LATE
+  // 4. 타인 + PROCESSING → PAYMENT_REQUEST_LATE
   @Test
   void throws_payment_request_late_when_other_buyer_and_status_is_not_retryable_pending() {
     ErrorException ex = assertThrows(ErrorException.class, () ->
-        service.validatePaymentRequest(1L, TradeStatus.PENDING, 2L)
+        service.validatePaymentRequest(1L, TradeStatus.PROCESSING, 2L)
     );
 
     assertEquals(ErrorCode.PAYMENT_REQUEST_LATE, ex.getErrorCode());

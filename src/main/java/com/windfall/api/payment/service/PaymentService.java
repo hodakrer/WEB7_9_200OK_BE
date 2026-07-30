@@ -109,7 +109,7 @@ public class PaymentService {
             || status == TradeStatus.PAYMENT_FAILED;
 
     if (isSameBuyer) {
-      if (status != TradeStatus.PENDING) {
+      if (status != TradeStatus.PROCESSING) {
         throw new ErrorException(ErrorCode.INVALID_TRADE_INIT);
       }
     } else {
