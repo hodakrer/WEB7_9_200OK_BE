@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.windfall.api.auction.dto.request.AuctionCreateRequest;
 import com.windfall.api.auction.dto.request.TagInfo;
 import com.windfall.api.payment.service.PaymentService;
-import com.windfall.api.payment.service.retry.PaymentPreProcessService;
+import com.windfall.api.payment.service.PaymentPreProcessService;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.auction.enums.AuctionCategory;
 import com.windfall.domain.auction.repository.AuctionRepository;

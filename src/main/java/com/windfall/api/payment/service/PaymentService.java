@@ -6,7 +6,6 @@ import com.windfall.api.payment.dto.request.PaymentConfirmRequest;
 import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.PaymentConfirmResponse;
 import com.windfall.api.payment.dto.response.TossPaymentConfirmResponse;
-import com.windfall.api.payment.service.retry.PaymentPreProcessService;
 import com.windfall.api.payment.service.retry.backoff.BackoffStrategy;
 import com.windfall.api.payment.service.retry.backoff.ExponentialFullJitterBackoffStrategy;
 import com.windfall.domain.auction.entity.Auction;

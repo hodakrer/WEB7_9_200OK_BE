@@ -1,4 +1,4 @@
-package com.windfall.api.payment.service.retry;
+package com.windfall.api.payment.service;
 
 import static com.windfall.global.exception.ErrorCode.PAYMENT_REQUEST_LATE;
 
