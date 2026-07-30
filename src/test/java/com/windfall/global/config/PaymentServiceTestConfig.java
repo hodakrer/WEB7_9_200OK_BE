@@ -3,7 +3,7 @@ package com.windfall.global.config;
 import com.windfall.api.payment.service.PaymentPostProcessService;
 import com.windfall.api.payment.service.PaymentResponseValidator;
 import com.windfall.api.payment.service.PaymentService;
-import com.windfall.api.payment.service.retry.PaymentPreProcessService;
+import com.windfall.api.payment.service.PaymentPreProcessService;
 import com.windfall.domain.auction.repository.AuctionRepository;
 import com.windfall.domain.trade.repository.TradeRepository;
 import com.windfall.domain.user.repository.UserRepository;
