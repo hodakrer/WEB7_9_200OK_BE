@@ -72,11 +72,11 @@ public class TradeCreationUniqueConstraintTest {
 
     // when
     Future<?> a = executor.submit(() ->
-        paymentPreProcessService.acquirePaymentRequestPermission(auction, 1L, 1000L)
+        paymentPreProcessService.acquirePaymentRequestPermission(auction, 1L, 1000L, "pk-a")
     );
 
     Future<?> b = executor.submit(() ->
-        paymentPreProcessService.acquirePaymentRequestPermission(auction, 2L, 2000L)
+        paymentPreProcessService.acquirePaymentRequestPermission(auction, 2L, 2000L, "pk-b")
     );
 
     Exception exA = null;

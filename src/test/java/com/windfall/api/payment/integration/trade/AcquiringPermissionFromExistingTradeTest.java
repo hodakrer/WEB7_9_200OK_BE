@@ -76,11 +76,11 @@ public class AcquiringPermissionFromExistingTradeTest {
 
     // when
     Future<?> a = executor.submit(() ->
-        paymentPreProcessService.acquirePaymentRequestPermission(auction, 3L, 1000L)
+        paymentPreProcessService.acquirePaymentRequestPermission(auction, 3L, 1000L, "pk-a")
     );
 
     Future<?> b = executor.submit(() ->
-        paymentPreProcessService.acquirePaymentRequestPermission(auction, 2L, 2000L)
+        paymentPreProcessService.acquirePaymentRequestPermission(auction, 2L, 2000L, "pk-a")
     );
 
     Exception exA = null;

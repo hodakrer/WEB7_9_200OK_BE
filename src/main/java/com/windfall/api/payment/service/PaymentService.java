@@ -64,7 +64,7 @@ public class PaymentService {
       throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
     }
 
-    Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount);
+    Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount, paymentKey);
     // 테스트용
     log.info(
         "Payment request claim success. auctionId={}, buyerId={}, tradeId={}",
@@ -150,10 +150,7 @@ public class PaymentService {
       } catch (ErrorException e) {
 
         // 마지막 시도라면 최종 실패
-        if (attempt == maxAttempts) {
-          tradeRepository.updateStatus(trade.getId(), TradeStatus.PAYMENT_FAILED);
-          throw e;
-        }
+        tradeRepository.updateStatus(trade.getId(), TradeStatus.PAYMENT_FAILED);
 
         // Full Jitter 대기
         long delay = backoffStrategy.nextDelay(attempt);

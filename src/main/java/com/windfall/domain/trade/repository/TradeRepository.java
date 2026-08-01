@@ -17,12 +17,14 @@ public interface TradeRepository extends JpaRepository<Trade, Long> {
   @Modifying(clearAutomatically = true, flushAutomatically = true)
   @Query("""
       UPDATE Trade t
-      SET t.status = :processingStatus
+      SET t.status = :processingStatus,
+        t.buyerId = :buyerId
       WHERE t.auction = :auction
         AND t.status IN :retryableStatuses
       """)
   int reservePaymentProcessing(
       @Param("auction") Auction auction,
+      @Param("buyerId") Long buyerId,
       @Param("processingStatus") TradeStatus processingStatus,
       @Param("retryableStatuses") List<TradeStatus> retryableStatuses
   );
