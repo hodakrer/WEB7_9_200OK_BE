@@ -4,12 +4,11 @@ import com.windfall.api.auction.service.AuctionStateService;
 import com.windfall.domain.chat.entity.ChatRoom;
 import com.windfall.domain.chat.repository.ChatRoomRepository;
 import com.windfall.domain.payment.entity.Payment;
-import com.windfall.domain.payment.entity.PaymentSelection;
-import com.windfall.domain.payment.enums.PaymentMethod;
-import com.windfall.domain.payment.enums.PaymentProvider;
+import com.windfall.domain.payment.enums.PaymentStatus;
 import com.windfall.domain.payment.repository.PaymentRepository;
 import com.windfall.domain.trade.entity.Trade;
 import com.windfall.domain.trade.enums.TradeStatus;
+import com.windfall.domain.trade.repository.TradeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,18 +17,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PaymentPostProcessService {
 
-  AuctionStateService auctionStateService;
-  PaymentRepository paymentRepository;
-  ChatRoomRepository chatRoomRepository;
+  private final AuctionStateService auctionStateService;
+  private final PaymentRepository paymentRepository;
+  private final ChatRoomRepository chatRoomRepository;
+  private final TradeRepository tradeRepository;
 
   public PaymentPostProcessService(
       AuctionStateService auctionStateService,
       PaymentRepository paymentRepository,
-      ChatRoomRepository chatRoomRepository
+      ChatRoomRepository chatRoomRepository,
+      TradeRepository tradeRepository
   ) {
     this.auctionStateService = auctionStateService;
     this.paymentRepository = paymentRepository;
     this.chatRoomRepository = chatRoomRepository;
+    this.tradeRepository = tradeRepository;
   }
 
   @Transactional
@@ -41,11 +43,15 @@ public class PaymentPostProcessService {
 
     auctionStateService.completeAuction(auctionId);
 
-    trade.changeStatus(TradeStatus.PAYMENT_COMPLETED);
+    // trade.changeStatus → 벌크 UPDATE
+    tradeRepository.updateStatus(trade.getId(), TradeStatus.PAYMENT_COMPLETED);
 
-    Payment payment = Payment.confirm(trade.getId(), paymentKey, amount,
-        new PaymentSelection(PaymentProvider.TOSS, PaymentMethod.MOBILE_PAYMENT));
-    paymentRepository.save(payment);
+    // PaymentPreProcessService 때 생성한 payment의 상태를 갱신
+    Payment payment = paymentRepository.findByPaymentKey(paymentKey)
+        .orElseThrow(() -> new IllegalStateException(
+            "선점 시 생성됐어야 할 Payment 없음. paymentKey=" + paymentKey));
+    // 영속 상태 → 커밋 시 자동 UPDATE
+    payment.changeStatus(PaymentStatus.DONE);
 
     ChatRoom chatRoom = ChatRoom.generateChatRoom(trade);
     chatRoomRepository.save(chatRoom);

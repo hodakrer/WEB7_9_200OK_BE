@@ -79,6 +79,13 @@ dependencies {
     implementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 
+    // Spring Batch
+    implementation("org.springframework.boot:spring-boot-starter-batch")
+
+    // Spring Batch 테스트용
+    testImplementation ("org.springframework.batch:spring-batch-test")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
 }
 
 tasks.withType<Test> {
