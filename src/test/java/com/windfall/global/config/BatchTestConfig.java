@@ -12,10 +12,10 @@ public class BatchTestConfig {
 
   @Bean
   public JobLauncherTestUtils jobLauncherTestUtils(
-      Job paymentReconcileJob, JobLauncher jobLauncher) {
+      Job finalizationJob, JobLauncher jobLauncher) {
 
     JobLauncherTestUtils utils = new JobLauncherTestUtils();
-    utils.setJob(paymentReconcileJob);
+    utils.setJob(finalizationJob);
     utils.setJobLauncher(jobLauncher);
     return utils;
   }

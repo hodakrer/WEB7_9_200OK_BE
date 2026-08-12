@@ -1,4 +1,4 @@
-package com.windfall.api.payment.reconcilebatch;
+package com.windfall.api.payment.finalizationscheduler;
 
 import com.windfall.domain.payment.entity.Payment;
 import com.windfall.domain.payment.enums.PaymentStatus;
@@ -17,13 +17,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 // TODO: 배치 성공 처리 후 auction 완료 처리, 채팅방 생성도!
 @Slf4j
 @Component
-public class PaymentReconcileProcessor implements ItemProcessor<Trade, ReconcileCommand> {
+public class FinalizationProcessor implements ItemProcessor<Trade, FinalizationCommand> {
 
   private final PaymentRepository paymentRepository;
   private final WebClient webClient;
   private final String authorization;
 
-  public PaymentReconcileProcessor(
+  public FinalizationProcessor(
       PaymentRepository paymentRepository,
       WebClient webClient,
       @Value("${spring.toss.secretkey}") String widgetSecretKey) {
@@ -34,7 +34,7 @@ public class PaymentReconcileProcessor implements ItemProcessor<Trade, Reconcile
   }
 
   @Override
-  public ReconcileCommand process(Trade trade) {
+  public FinalizationCommand process(Trade trade) {
 
     // 1. (tradeId, buyerId)로 가장 최근 payment 1건 조회
     Payment payment = paymentRepository
@@ -66,11 +66,11 @@ public class PaymentReconcileProcessor implements ItemProcessor<Trade, Reconcile
 
     // 3. 토스 상태 → 우리 상태 결정
     return switch (response.status()) {
-      case "DONE" -> new ReconcileCommand(
+      case "DONE" -> new FinalizationCommand(
           trade.getId(), TradeStatus.PAYMENT_COMPLETED,
           payment.getId(), PaymentStatus.DONE);
 
-      case "ABORTED", "EXPIRED" -> new ReconcileCommand(
+      case "ABORTED", "EXPIRED" -> new FinalizationCommand(
           trade.getId(), TradeStatus.PAYMENT_FAILED,
           payment.getId(), PaymentStatus.FAILED);
 

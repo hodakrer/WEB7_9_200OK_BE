@@ -1,4 +1,4 @@
-package com.windfall.global.config.paymentreconcile;
+package com.windfall.global.config.paymentfinalization;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -9,11 +9,11 @@ import org.springframework.context.annotation.Configuration;
 
 // SpringBatch에서 Job과 Step은 @Bean 정의로 만듬. (클래스 상속 방식 X)
 @Configuration
-public class PaymentReconcileJobConfig {
+public class FinalizationJobConfig {
   @Bean
-  public Job paymentReconcileJob(JobRepository jobRepository, Step paymentReconcileStep) {
-    return new JobBuilder("paymentReconcileJob", jobRepository)
-        .start(paymentReconcileStep)
+  public Job finalizationJob(JobRepository jobRepository, Step finalizationStep) {
+    return new JobBuilder("finalizationJob", jobRepository)
+        .start(finalizationStep)
         .build();
   }
 }

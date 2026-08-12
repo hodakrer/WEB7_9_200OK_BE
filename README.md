@@ -138,7 +138,7 @@ PG 승인 요청은 네트워크 사정으로 실패할 수 있습니다. 바로
 **선택**
 - **Reader**: `JpaCursorItemReader`. 페이징 방식은 처리 도중 대상 상태가 바뀌면 OFFSET이 밀려 누락이 생깁니다. 커서는 단일 트랜잭션이라 수평 확장이 어렵다는 대가가 있으나, 현재 처리량에서는 문제되지 않는다고 판단했습니다
 - **트랜잭션 경계**: 외부 API 호출을 `@Transactional` 밖에 두었습니다. 안에 두면 HTTP 대기 시간만큼 커넥션을 점유해 풀이 고갈됩니다
-- **Processor → Writer**: 엔티티 대신 `ReconcileCommand` record로 전달해 청크 경계에서 detached 엔티티를 다루는 문제를 피했습니다
+- **Processor → Writer**: 엔티티 대신 `FinalizationCommand` record로 전달해 청크 경계에서 detached 엔티티를 다루는 문제를 피했습니다
 - **멱등키 없음**: 상태 조회는 `GET`이며, 토스페이먼츠는 POST 외 메서드의 멱등성을 자체 보장하고 GET에 붙인 멱등키 헤더는 무시하므로 별도 키를 두지 않았습니다
 - **스케줄링**: `fixedDelay`로 이전 실행이 끝난 뒤 5분. 실행 중첩을 구조적으로 차단했습니다
 
@@ -159,7 +159,7 @@ PG 승인 요청은 네트워크 사정으로 실패할 수 있습니다. 바로
 
 
 ### 전체 기능
-
+<details>
 1. OAuth2 기반 소셜 로그인 (Naver / Google / Kakao) — **담당**
 2. Toss Payments 기반 결제 및 정산 배치 — **담당**
 3. Redis ZSet 기반 실시간 인기 랭킹
