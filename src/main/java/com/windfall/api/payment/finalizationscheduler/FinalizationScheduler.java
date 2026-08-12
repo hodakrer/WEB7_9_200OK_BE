@@ -1,4 +1,4 @@
-package com.windfall.api.payment.reconcilebatch;
+package com.windfall.api.payment.finalizationscheduler;
 
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -13,15 +13,15 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentReconcileScheduler {
+public class FinalizationScheduler {
 
   private final JobLauncher jobLauncher;
-  private final Job paymentReconcileJob;
+  private final Job finalizationJob;
 
   // 이전 실행이 '끝난 뒤' 5분 후 다시 실행
   // @Scheduled(fixedDelay = 5 * 60 * 1000)
-  @Scheduled(fixedDelayString = "${payment.reconcile.fixed-delay:300000}")
-  public void runPaymentReconcileJob() {
+  @Scheduled(fixedDelayString = "${payment.finalize.fixed-delay:300000}")
+  public void runFinalizationJob() {
     try {
       JobParameters jobParameters = new JobParametersBuilder()
           // 스프링 배치는 "Job 이름 + JobParameters 조합"이 이미 성공한 실행이면 재실행하지 않음.
@@ -29,9 +29,9 @@ public class PaymentReconcileScheduler {
           .addLocalDateTime("runAt", LocalDateTime.now())
           .toJobParameters();
 
-      jobLauncher.run(paymentReconcileJob, jobParameters);
+      jobLauncher.run(finalizationJob, jobParameters);
     } catch (Exception e) {
-      log.error("결제 대사 배치 실행 실패", e);
+      log.error("결제 상태 확정 배치 실행 실패", e);
     }
   }
 

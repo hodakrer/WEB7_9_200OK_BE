@@ -1,4 +1,4 @@
-package com.windfall.api.payment.reconcilebatch;
+package com.windfall.api.payment.finalizationscheduler;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -40,8 +40,8 @@ import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest
 @Import({MockTossConfig.class, BatchTestConfig.class})
-@TestPropertySource(properties = "payment.reconcile.fixed-delay=99999999")
-class PaymentReconcileJobTest {
+@TestPropertySource(properties = "payment.finalize.fixed-delay=99999999")
+class FinalizationSchedulerTest {
 
   @Autowired JobLauncherTestUtils jobLauncherTestUtils;
   @Autowired MockWebServer mockTossServer;

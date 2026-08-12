@@ -1,4 +1,4 @@
-package com.windfall.api.payment.reconcilebatch;
+package com.windfall.api.payment.finalizationscheduler;
 
 import com.windfall.domain.payment.repository.PaymentRepository;
 import com.windfall.domain.trade.repository.TradeRepository;
@@ -11,14 +11,14 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PaymentReconcileWriter implements ItemWriter<ReconcileCommand> {
+public class FinalizationWriter implements ItemWriter<FinalizationCommand> {
 
   private final TradeRepository tradeRepository;
   private final PaymentRepository paymentRepository;
 
   @Override
-  public void write(Chunk<? extends ReconcileCommand> chunk) {
-    for (ReconcileCommand command : chunk) {
+  public void write(Chunk<? extends FinalizationCommand> chunk) {
+    for (FinalizationCommand command : chunk) {
       tradeRepository.updateStatus(command.tradeId(), command.tradeStatus());
       paymentRepository.updateStatus(command.paymentId(), command.paymentStatus());
     }

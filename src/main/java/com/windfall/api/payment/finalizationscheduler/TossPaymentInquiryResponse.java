@@ -1,4 +1,4 @@
-package com.windfall.api.payment.reconcilebatch;
+package com.windfall.api.payment.finalizationscheduler;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

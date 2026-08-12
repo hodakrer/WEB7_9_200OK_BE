@@ -1,4 +1,4 @@
-package com.windfall.api.payment.reconcilebatch;
+package com.windfall.api.payment.finalizationscheduler;
 
 import com.windfall.domain.trade.entity.Trade;
 import com.windfall.domain.trade.enums.TradeStatus;
@@ -8,9 +8,9 @@ import org.springframework.batch.item.database.JpaCursorItemReader;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ProcessingTradeReader extends JpaCursorItemReader<Trade> {
+public class FinalizationReader extends JpaCursorItemReader<Trade> {
 
-  public ProcessingTradeReader(EntityManagerFactory entityManagerFactory) {
+  public FinalizationReader(EntityManagerFactory entityManagerFactory) {
     setName("processingTradeReader");
     setEntityManagerFactory(entityManagerFactory);
     setQueryString("""
