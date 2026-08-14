@@ -4,7 +4,7 @@
 시간이 지날수록 가격이 내려가는 하락형 경매로, 중고 거래의 '협상'을 '선택의 타이밍'으로 바꾼 서비스입니다.
 6인 팀 프로젝트(2025.12.03 ~ 2026.01.07)이며, 이 저장소는 **제가 담당한 영역을 정리한 개인 기록**입니다.
 
-- 원본 팀 저장소: {채울 것: 팀 리포 URL}
+- 원본 팀 저장소: https://github.com/prgrms-web-devcourse-final-project/WEB7_9_200OK_BE
 - 시연 영상: [YouTube](https://youtu.be/UX1E70MlFtU)
 
 <br>
