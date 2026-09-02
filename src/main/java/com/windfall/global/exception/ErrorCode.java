@@ -71,6 +71,14 @@ public enum ErrorCode {
   NOT_FOUND_BUYER(HttpStatus.NOT_FOUND, "해당 buyerId에 맞는 구매자를 db에서 찾지 못했습니다."),
   NOT_FOUND_SELLER(HttpStatus.NOT_FOUND, "해당 seelerId에 맞는 판매자를 db에서 찾지 못했습니다."),
 
+  // 결제 - PG사 응답
+  PAYMENT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 승인 완료된 결제입니다. 상태 확정은 배치가 처리합니다."),
+  PAYMENT_PG_TEMPORARY_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "PG사 일시 오류로 결제 승인에 실패했습니다."),
+  PAYMENT_CARD_REJECTED(HttpStatus.BAD_REQUEST, "카드사에서 결제를 거절했습니다. 다른 결제수단을 이용해주세요."),
+  PAYMENT_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "카드 결제 한도를 초과했습니다."),
+  PAYMENT_SESSION_EXPIRED(HttpStatus.GONE, "결제 세션이 만료되었습니다. 결제를 다시 시도해주세요."),
+  PAYMENT_PG_CONFIG_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버의 PG사 연동 설정에 오류가 있습니다."),
+  PAYMENT_UNKNOWN_PG_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "PG사에서 알 수 없는 응답이 왔습니다. 확인이 필요합니다."),
 
   // S3 - 파일 업로드 공통
   INVALID_UPLOAD_FILE(HttpStatus.BAD_REQUEST, "업로드 파일이 유효하지 않습니다."),
