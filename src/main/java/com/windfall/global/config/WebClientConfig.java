@@ -13,8 +13,8 @@ public class WebClientConfig {
   private String baseUrl;
 
   @Bean
-  public WebClient webClient() {
-    return WebClient.builder()
+  public WebClient webClient(WebClient.Builder builder) {
+    return builder
         .baseUrl(baseUrl)
         .build();
   }

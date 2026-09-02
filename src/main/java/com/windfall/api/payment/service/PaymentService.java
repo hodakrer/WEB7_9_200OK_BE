@@ -2,6 +2,7 @@ package com.windfall.api.payment.service;
 
 import static com.windfall.global.exception.ErrorCode.PAYMENT_REQUEST_LATE;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.windfall.api.payment.dto.request.PaymentConfirmRequest;
 import com.windfall.api.payment.dto.request.TossPaymentConfirmRequest;
 import com.windfall.api.payment.dto.response.PaymentConfirmResponse;
@@ -18,6 +19,7 @@ import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +28,6 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 @Slf4j
 @Service
@@ -118,6 +119,32 @@ public class PaymentService {
     }
   }
 
+
+  ////////// 결제 승인 요청을 위한 것들 ////////////
+  ///
+  /// 1. http 응답값
+  private static final Set<String> RETRYABLE = Set.of(
+      "PROVIDER_ERROR", "CARD_PROCESSING_ERROR",
+      "FAILED_PAYMENT_INTERNAL_SYSTEM_PROCESSING",
+      "FAILED_INTERNAL_SYSTEM_PROCESSING", "UNKNOWN_PAYMENT_ERROR",
+      "IDEMPOTENT_REQUEST_PROCESSING");
+
+  private static final Set<String> CUSTOMER_FAILED = Set.of(
+      "INVALID_REJECT_CARD", "INVALID_STOPPED_CARD", "INVALID_CARD_LOST_OR_STOLEN",
+      "INVALID_CARD_NUMBER", "INVALID_CARD_EXPIRATION", "INVALID_PASSWORD",
+      "EXCEED_MAX_DAILY_PAYMENT_COUNT", "EXCEED_MAX_PAYMENT_AMOUNT",
+      "EXCEED_MAX_MONTHLY_PAYMENT_AMOUNT",
+      "REJECT_ACCOUNT_PAYMENT", "REJECT_CARD_PAYMENT", "REJECT_CARD_COMPANY");
+
+  private static final Set<String> CONFIG_FAILED = Set.of(
+      "INVALID_API_KEY", "UNAUTHORIZED_KEY", "INCORRECT_BASIC_AUTH_FORMAT",
+      "INVALID_UNREGISTERED_SUBMALL", "NOT_REGISTERED_BUSINESS", "NOT_FOUND_TERMINAL_ID");
+
+  ///
+  /// 2. 함수
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  private record TossError(String code, String message) {}
+
   TossPaymentConfirmResponse confirm(
       String authorization,
       TossPaymentConfirmRequest tossRequest,
@@ -128,42 +155,72 @@ public class PaymentService {
     int maxAttempts = 5;
 
     for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-
       try {
-
-        TossPaymentConfirmResponse tossResponse = webClient.post()
-            .uri("/v1/payments/confirm")
-            .header(HttpHeaders.AUTHORIZATION, authorization)
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-            .header("Idempotency-Key", idempotencyKey)
-            .bodyValue(tossRequest)
-            .retrieve()
-            .onStatus(HttpStatusCode::isError, response ->
-                Mono.error(new ErrorException(ErrorCode.PAYMENT_CONFIRM_FAILED))
-            )
-            .bodyToMono(TossPaymentConfirmResponse.class)
-            .block();
-
-        // 성공
-        return tossResponse;
-
+        return requestToToss(authorization, tossRequest,idempotencyKey);
       } catch (ErrorException e) {
+        ErrorCode code = e.getErrorCode();
 
-        // 마지막 시도라면 최종 실패
-        tradeRepository.updateStatus(trade.getId(), TradeStatus.PAYMENT_FAILED);
+        // a. 일시적인 에러 → 재시도
+        if (code == ErrorCode.PAYMENT_PG_TEMPORARY_ERROR) {
+          // a-1. 마지막 시도였다면 UNKNOWN. PROCESSING인 채로 f놔둠.
+          if (attempt == maxAttempts) {
+            throw e;
+          }
+          // a-2. 횟수 남았으면 재시도
+          long delay = backoffStrategy.nextDelay(attempt);
+          try {
+            Thread.sleep(delay);
+          } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(ex);
+          }
 
-        // Full Jitter 대기
-        long delay = backoffStrategy.nextDelay(attempt);
+          // b. 실패가 확실한 에러 → FAILED 확정
+        } else if (code == ErrorCode.PAYMENT_CARD_REJECTED
+            || code == ErrorCode.PAYMENT_PG_CONFIG_ERROR) {
+          tradeRepository.updateStatus(trade.getId(), TradeStatus.PAYMENT_FAILED);
+          throw e;
 
-        try {
-          Thread.sleep(delay);
-        } catch (InterruptedException ex) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException(ex);
+          // c. 모르는 에러 → 상태 확정 금지. retry 멈추고 PROCESSING인 채로 놔둠.
+        } else {
+          throw e;
         }
       }
     }
 
-    throw new IllegalStateException("Retry loop terminated unexpectedly.");
+    // 모두 실패하면
+    throw new ErrorException(ErrorCode.PAYMENT_UNKNOWN_PG_ERROR);
+  }
+
+  private TossPaymentConfirmResponse requestToToss(
+      String authorization, TossPaymentConfirmRequest tossRequest, String idempotencyKey) {
+    long start = System.nanoTime();
+    try {
+      return webClient.post()
+          .uri("/v1/payments/confirm")
+          .header(HttpHeaders.AUTHORIZATION, authorization)
+          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+          .header("Idempotency-Key", idempotencyKey)
+          .bodyValue(tossRequest)
+          .retrieve()
+          .onStatus(HttpStatusCode::isError, response ->
+              response.bodyToMono(TossError.class)
+                  .defaultIfEmpty(new TossError(null, null))
+                  .map(body -> new ErrorException(classify(body.code()))))
+          .bodyToMono(TossPaymentConfirmResponse.class)
+          .block();
+    } finally {
+      long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+      log.info("TOSS_CALL_ELAPSED = {}ms", elapsedMs);
+    }
+  }
+
+  private ErrorCode classify(String tossCode) {
+    if (tossCode == null)                        return ErrorCode.PAYMENT_UNKNOWN_PG_ERROR;
+    if (RETRYABLE.contains(tossCode))            return ErrorCode.PAYMENT_PG_TEMPORARY_ERROR;
+    if (CUSTOMER_FAILED.contains(tossCode))      return ErrorCode.PAYMENT_CARD_REJECTED;
+    if (CONFIG_FAILED.contains(tossCode))        return ErrorCode.PAYMENT_PG_CONFIG_ERROR;
+    if (tossCode.equals("ALREADY_PROCESSED_PAYMENT")) return ErrorCode.PAYMENT_ALREADY_PROCESSED;
+    return ErrorCode.PAYMENT_UNKNOWN_PG_ERROR;   // 모르는 건 모른다고 남김.
   }
 }
