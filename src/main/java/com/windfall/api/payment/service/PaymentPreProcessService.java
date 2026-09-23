@@ -32,6 +32,7 @@ public class PaymentPreProcessService {
   private final PaymentRepository paymentRepository;
   private final ObjectProvider<PaymentPreProcessService> self;
 
+  // 10초는 변경 가능.
   private final Cache<Long, Object> paymentPreProcessCache = Caffeine.newBuilder()
       .expireAfterWrite(10, TimeUnit.SECONDS)
       .build();
