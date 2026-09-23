@@ -2,6 +2,8 @@ package com.windfall.api.payment.service;
 
 import static com.windfall.global.exception.ErrorCode.PAYMENT_REQUEST_LATE;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.windfall.domain.auction.entity.Auction;
 import com.windfall.domain.payment.entity.Payment;
 import com.windfall.domain.payment.entity.PaymentSelection;
@@ -13,8 +15,10 @@ import com.windfall.domain.trade.enums.TradeStatus;
 import com.windfall.domain.trade.repository.TradeRepository;
 import com.windfall.global.exception.ErrorException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +30,27 @@ public class PaymentPreProcessService {
 
   private final TradeRepository tradeRepository;
   private final PaymentRepository paymentRepository;
+  private final ObjectProvider<PaymentPreProcessService> self;
+
+  private final Cache<Long, Object> paymentPreProcessCache = Caffeine.newBuilder()
+      .expireAfterWrite(10, TimeUnit.SECONDS)
+      .build();
+
+  public Trade acquirePaymentRequestPermission(Auction auction, Long buyerId, Long amount, String paymentKey) {
+
+    Long auctionId = auction.getId();
+
+    Object previous = paymentPreProcessCache.asMap().putIfAbsent(auctionId, Boolean.TRUE);
+    if (previous != null) {
+      log.warn("[RACE] Application-level cache blocked duplicate request. auctionId={}", auctionId);
+      throw new ErrorException(PAYMENT_REQUEST_LATE);
+    }
+
+    return self.getObject().acquirePaymentRequestPermissionDB(auction, buyerId, amount, paymentKey);
+  }
 
   @Transactional
-  public Trade acquirePaymentRequestPermission(Auction auction, Long buyerId, Long amount, String paymentKey) {
+  public Trade acquirePaymentRequestPermissionDB(Auction auction, Long buyerId, Long amount, String paymentKey) {
 
     Trade existingTrade =
         tradeRepository.findByAuction(auction)

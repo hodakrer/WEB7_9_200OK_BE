@@ -62,6 +62,9 @@ dependencies {
     // actuator
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    // caffeine cache
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+
 // JSON 파싱
 
     // websocket
