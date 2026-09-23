@@ -66,13 +66,6 @@ public class PaymentService {
     }
 
     Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount, paymentKey);
-    // 테스트용
-    log.info(
-        "Payment request claim success. auctionId={}, buyerId={}, tradeId={}",
-        auctionId,
-        buyerId,
-        trade.getId()
-    );
 
     // Toss PG사에서 요구하는 암호화
     Base64.Encoder encoder = Base64.getEncoder();
@@ -211,7 +204,6 @@ public class PaymentService {
           .block();
     } finally {
       long elapsedMs = (System.nanoTime() - start) / 1_000_000;
-      log.info("TOSS_CALL_ELAPSED = {}ms", elapsedMs);
     }
   }
 
