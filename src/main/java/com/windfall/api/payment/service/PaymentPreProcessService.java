@@ -13,8 +13,11 @@ import com.windfall.domain.payment.repository.PaymentRepository;
 import com.windfall.domain.trade.entity.Trade;
 import com.windfall.domain.trade.enums.TradeStatus;
 import com.windfall.domain.trade.repository.TradeRepository;
+import com.windfall.domain.user.repository.UserRepository;
+import com.windfall.global.exception.ErrorCode;
 import com.windfall.global.exception.ErrorException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PaymentPreProcessService {
 
+  private final UserRepository userRepository;
   private final TradeRepository tradeRepository;
   private final PaymentRepository paymentRepository;
   private final ObjectProvider<PaymentPreProcessService> self;
@@ -52,6 +56,17 @@ public class PaymentPreProcessService {
 
   @Transactional
   public Trade acquirePaymentRequestPermissionDB(Auction auction, Long buyerId, Long amount, String paymentKey) {
+
+    // 올바르게 User 객체 존재 여부 검증
+    Long sellerId = auction.getSeller().getId();
+    Set<Long> existingIds = userRepository.findExistingIds(List.of(sellerId, buyerId));
+
+    if (!existingIds.contains(sellerId)) {
+      throw new ErrorException(ErrorCode.NOT_FOUND_SELLER);
+    }
+    if (!existingIds.contains(buyerId)) {
+      throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
+    }
 
     Trade existingTrade =
         tradeRepository.findByAuction(auction)

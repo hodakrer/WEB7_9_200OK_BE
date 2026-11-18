@@ -56,15 +56,6 @@ public class PaymentService {
     Auction auction = auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ErrorException(ErrorCode.NOT_FOUND_AUCTION));
 
-    // 올바른 유저인지 확인과 예외처리.
-    Long sellerId = auction.getSeller().getId();
-    if (!userRepository.existsById(sellerId)) {
-      throw new ErrorException(ErrorCode.NOT_FOUND_SELLER);
-    }
-    if (!userRepository.existsById(buyerId)) {
-      throw new ErrorException(ErrorCode.NOT_FOUND_BUYER);
-    }
-
     Trade trade = paymentPreProcessService.acquirePaymentRequestPermission(auction, buyerId, amount, paymentKey);
 
     // Toss PG사에서 요구하는 암호화
